@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,8 @@ import {
   Settings,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 
 const providersData = [

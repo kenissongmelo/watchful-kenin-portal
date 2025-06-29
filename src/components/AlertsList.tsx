@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +11,9 @@ import {
   Trash2, 
   ExternalLink,
   Play,
-  Pause
+  Pause,
+  Plus,
+  Bell
 } from 'lucide-react';
 
 const mockAlerts = [
