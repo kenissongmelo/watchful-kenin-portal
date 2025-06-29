@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Search, 
   Filter, 
@@ -56,8 +58,10 @@ export const AlertsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [alerts, setAlerts] = useState(mockAlerts);
+  const { toast } = useToast();
 
-  const filteredAlerts = mockAlerts.filter(alert => {
+  const filteredAlerts = alerts.filter(alert => {
     const matchesSearch = alert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          alert.service.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProvider = filterProvider === 'all' || alert.provider.toLowerCase().includes(filterProvider.toLowerCase());
@@ -66,6 +70,72 @@ export const AlertsList = () => {
     return matchesSearch && matchesProvider && matchesStatus;
   });
 
+  const handleCreateAlert = () => {
+    toast({
+      title: "Criar Alerta",
+      description: "Redirecionando para página de criação de alerta...",
+    });
+    // Navegação será implementada com router
+    window.location.href = '/create';
+  };
+
+  const handleToggleStatus = (alertId: number) => {
+    setAlerts(prev => prev.map(alert => 
+      alert.id === alertId 
+        ? { ...alert, status: alert.status === 'active' ? 'paused' : 'active' }
+        : alert
+    ));
+    
+    const alert = alerts.find(a => a.id === alertId);
+    const newStatus = alert?.status === 'active' ? 'pausado' : 'ativado';
+    
+    toast({
+      title: "Status Alterado",
+      description: `Alerta "${alert?.name}" foi ${newStatus}`,
+    });
+  };
+
+  const handleEditAlert = (alertId: number) => {
+    const alert = alerts.find(a => a.id === alertId);
+    toast({
+      title: "Editar Alerta",
+      description: `Editando alerta: ${alert?.name}`,
+    });
+    console.log('Editing alert:', alertId);
+  };
+
+  const handleViewExternal = (alertId: number) => {
+    const alert = alerts.find(a => a.id === alertId);
+    toast({
+      title: "Link Externo",
+      description: `Abrindo ${alert?.provider} para o alerta: ${alert?.name}`,
+    });
+    console.log('Opening external link for alert:', alertId);
+  };
+
+  const handleDeleteAlert = (alertId: number) => {
+    const alert = alerts.find(a => a.id === alertId);
+    
+    if (confirm(`Tem certeza que deseja excluir o alerta "${alert?.name}"?`)) {
+      setAlerts(prev => prev.filter(a => a.id !== alertId));
+      toast({
+        title: "Alerta Excluído",
+        description: `Alerta "${alert?.name}" foi removido com sucesso`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setFilterProvider('all');
+    setFilterStatus('all');
+    toast({
+      title: "Filtros Limpos",
+      description: "Todos os filtros foram removidos",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -73,7 +143,7 @@ export const AlertsList = () => {
           <h2 className="text-2xl font-bold text-gray-900">Alert Management</h2>
           <p className="text-gray-600">Manage and configure your monitoring alerts</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreateAlert}>
           <Plus className="w-4 h-4 mr-2" />
           Create Alert
         </Button>
@@ -158,20 +228,41 @@ export const AlertsList = () => {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleToggleStatus(alert.id)}
+                    title={alert.status === 'active' ? 'Pausar alerta' : 'Ativar alerta'}
+                  >
                     {alert.status === 'active' ? (
                       <Pause className="w-4 h-4" />
                     ) : (
                       <Play className="w-4 h-4" />
                     )}
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleEditAlert(alert.id)}
+                    title="Editar alerta"
+                  >
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleViewExternal(alert.id)}
+                    title="Ver no provider externo"
+                  >
                     <ExternalLink className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeleteAlert(alert.id)}
+                    title="Excluir alerta"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -189,7 +280,7 @@ export const AlertsList = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>
             <p className="text-gray-600 mb-4">Try adjusting your search or filter criteria</p>
-            <Button variant="outline">Clear Filters</Button>
+            <Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>
           </CardContent>
         </Card>
       )}
