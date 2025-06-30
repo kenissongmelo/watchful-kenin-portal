@@ -7,14 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Save, 
   Eye, 
   AlertTriangle, 
   CheckCircle,
   Code,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
+import { AlertProviderService, AlertData } from '@/services/alertProviders';
 
 export const CreateAlert = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +30,8 @@ export const CreateAlert = () => {
   });
 
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const { toast } = useToast();
 
   const providers = [
     { id: 'newrelic', name: 'New Relic', queryType: 'NRQL' },
@@ -50,10 +55,78 @@ export const CreateAlert = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const getStoredCredentials = (provider: string) => {
+    const stored = localStorage.getItem(`${provider}_credentials`);
+    return stored ? JSON.parse(stored) : null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name || !formData.service || !formData.provider || !formData.query || !formData.threshold) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const credentials = getStoredCredentials(formData.provider);
+    if (!credentials) {
+      toast({
+        title: "Erro",
+        description: "Credenciais não encontradas. Configure o provedor primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
     console.log('Creating alert:', formData);
-    // Here you would typically send the data to your backend
+
+    try {
+      const alertData: AlertData = {
+        name: formData.name,
+        service: formData.service,
+        query: formData.query,
+        threshold: formData.threshold,
+        description: formData.description
+      };
+
+      const provider = AlertProviderService.createProvider(
+        formData.provider as 'newrelic' | 'datadog',
+        credentials
+      );
+
+      const result = await provider.createAlert(alertData);
+      console.log('Alert created successfully:', result);
+
+      toast({
+        title: "Sucesso!",
+        description: `Alerta "${formData.name}" criado com sucesso no ${providers.find(p => p.id === formData.provider)?.name}.`,
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        service: '',
+        provider: '',
+        query: '',
+        threshold: '',
+        description: ''
+      });
+
+    } catch (error) {
+      console.error('Error creating alert:', error);
+      toast({
+        title: "Erro",
+        description: `Falha ao criar alerta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const selectedProvider = providers.find(p => p.id === formData.provider);
@@ -61,8 +134,8 @@ export const CreateAlert = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Create New Alert</h2>
-        <p className="text-gray-600">Configure a new monitoring alert for your services</p>
+        <h2 className="text-2xl font-bold text-gray-900">Criar Novo Alerta</h2>
+        <p className="text-gray-600">Configure um novo alerta de monitoramento para seus serviços</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -72,41 +145,43 @@ export const CreateAlert = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Settings className="h-5 w-5 text-blue-600" />
-                <span>Alert Configuration</span>
+                <span>Configuração do Alerta</span>
               </CardTitle>
               <CardDescription>
-                Define your alert parameters and monitoring query
+                Defina os parâmetros do seu alerta e query de monitoramento
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Alert Name</Label>
+                    <Label htmlFor="name">Nome do Alerta</Label>
                     <Input
                       id="name"
-                      placeholder="e.g., High CPU Usage Alert"
+                      placeholder="ex: Alerta de Alto Uso de CPU"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
+                      required
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="service">Service</Label>
+                    <Label htmlFor="service">Serviço</Label>
                     <Input
                       id="service"
-                      placeholder="e.g., payment-api"
+                      placeholder="ex: payment-api"
                       value={formData.service}
                       onChange={(e) => handleInputChange('service', e.target.value)}
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="provider">Monitoring Provider</Label>
-                  <Select value={formData.provider} onValueChange={(value) => handleInputChange('provider', value)}>
+                  <Label htmlFor="provider">Provedor de Monitoramento</Label>
+                  <Select value={formData.provider} onValueChange={(value) => handleInputChange('provider', value)} required>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a monitoring provider" />
+                      <SelectValue placeholder="Selecione um provedor de monitoramento" />
                     </SelectTrigger>
                     <SelectContent>
                       {providers.map((provider) => (
@@ -125,10 +200,11 @@ export const CreateAlert = () => {
                   <div className="relative">
                     <Textarea
                       id="query"
-                      placeholder="Enter your monitoring query..."
+                      placeholder="Digite sua query de monitoramento..."
                       value={formData.query}
                       onChange={(e) => handleInputChange('query', e.target.value)}
                       className="font-mono text-sm min-h-24"
+                      required
                     />
                     <Button
                       type="button"
@@ -143,20 +219,21 @@ export const CreateAlert = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="threshold">Alert Threshold</Label>
+                  <Label htmlFor="threshold">Threshold do Alerta</Label>
                   <Input
                     id="threshold"
-                    placeholder="e.g., > 80%, > 2000ms, > 100"
+                    placeholder="ex: 80, 2000, 100"
                     value={formData.threshold}
                     onChange={(e) => handleInputChange('threshold', e.target.value)}
+                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description">Descrição (opcional)</Label>
                   <Textarea
                     id="description"
-                    placeholder="Describe what this alert monitors and when it should trigger..."
+                    placeholder="Descreva o que este alerta monitora e quando deve ser disparado..."
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                   />
@@ -164,11 +241,24 @@ export const CreateAlert = () => {
 
                 <div className="flex justify-end space-x-3 pt-4">
                   <Button type="button" variant="outline">
-                    Cancel
+                    Cancelar
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="w-4 h-4 mr-2" />
-                    Create Alert
+                  <Button 
+                    type="submit" 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={isCreating}
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Criar Alerta
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -182,18 +272,18 @@ export const CreateAlert = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Preview</CardTitle>
-              <CardDescription>How your alert will appear</CardDescription>
+              <CardDescription>Como seu alerta aparecerá</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center space-x-2 mb-2">
-                  <h4 className="font-medium">{formData.name || 'Alert Name'}</h4>
+                  <h4 className="font-medium">{formData.name || 'Nome do Alerta'}</h4>
                   <Badge variant="outline">
-                    {selectedProvider?.name || 'Provider'}
+                    {selectedProvider?.name || 'Provedor'}
                   </Badge>
                 </div>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <div><strong>Service:</strong> {formData.service || 'service-name'}</div>
+                  <div><strong>Serviço:</strong> {formData.service || 'nome-do-serviço'}</div>
                   <div><strong>Threshold:</strong> {formData.threshold || 'threshold'}</div>
                 </div>
                 {formData.query && (
@@ -209,8 +299,8 @@ export const CreateAlert = () => {
           {selectedProvider && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Sample Queries</CardTitle>
-                <CardDescription>Common {selectedProvider.name} queries</CardDescription>
+                <CardTitle className="text-lg">Queries de Exemplo</CardTitle>
+                <CardDescription>Queries comuns do {selectedProvider.name}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -233,22 +323,22 @@ export const CreateAlert = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center space-x-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <span>Tips</span>
+                <span>Dicas</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-start space-x-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <span>Test your queries in the provider's console first</span>
+                  <span>Teste suas queries no console do provedor primeiro</span>
                 </div>
                 <div className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Use specific service tags for better targeting</span>
+                  <span>Use tags específicas de serviço para melhor segmentação</span>
                 </div>
                 <div className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Set reasonable thresholds to avoid alert fatigue</span>
+                  <span>Configure thresholds razoáveis para evitar fadiga de alertas</span>
                 </div>
               </div>
             </CardContent>
