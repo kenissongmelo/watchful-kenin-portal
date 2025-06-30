@@ -1,73 +1,41 @@
-# Welcome to your Lovable project
 
-## Project info
+# KeninDuty - Backstage Plugin
 
-**URL**: https://lovable.dev/projects/cce953e9-d9c5-404a-aeb8-64f95fa50659
+A Backstage plugin for alert management and monitoring integration.
 
-## How can I edit this code?
+## Installation
 
-There are several ways of editing your application.
+This plugin integrates with Backstage to provide alert management capabilities.
 
-**Use Lovable**
+### For Backstage Integration
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cce953e9-d9c5-404a-aeb8-64f95fa50659) and start prompting.
+1. Import the plugin in your Backstage app:
 
-Changes made via Lovable will be committed automatically to this repo.
+```typescript
+// In packages/app/src/App.tsx
+import { KeninDutyPage } from '@internal/plugin-kenin-duty';
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+// Add to your app routes:
+<Route path="/kenin-duty" element={<KeninDutyPage />} />
 ```
 
-**Edit a file directly in GitHub**
+2. Add to your sidebar navigation:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```typescript
+// In packages/app/src/components/Root/Root.tsx
+import { AlertTriangle } from 'lucide-react';
 
-**Use GitHub Codespaces**
+// Add to your sidebar:
+<SidebarItem icon={AlertTriangle} to="kenin-duty" text="Alert Management" />
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Features
 
-## What technologies are used for this project?
+- Dashboard with alert overview
+- Alert management and configuration
+- Provider integration (New Relic, Datadog)
+- Create and manage custom alerts
 
-This project is built with:
+## Usage
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/cce953e9-d9c5-404a-aeb8-64f95fa50659) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Once installed, navigate to `/kenin-duty` in your Backstage instance to access the alert management interface.
