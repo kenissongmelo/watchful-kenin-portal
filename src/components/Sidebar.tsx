@@ -1,126 +1,209 @@
-
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Bell, 
-  Plus, 
-  Settings,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Typography,
+  Box,
+  Chip,
+  Divider
+} from '@material-ui/core';
+import {
+  Dashboard as DashboardIcon,
+  Notifications as BellIcon,
+  Add as PlusIcon,
+  Settings as SettingsIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  CheckCircle as CheckCircleIcon
+} from '@material-ui/icons';
+import { makeStyles } from '@material-ui/core/styles';
+
+const useStyles = makeStyles((theme) => ({
+  drawer: {
+    width: 240,
+    flexShrink: 0,
+  },
+  drawerCollapsed: {
+    width: 64,
+  },
+  drawerPaper: {
+    width: 240,
+    backgroundColor: theme.palette.background.paper,
+    borderRight: `1px solid ${theme.palette.divider}`,
+  },
+  drawerPaperCollapsed: {
+    width: 64,
+  },
+  header: {
+    padding: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    backgroundColor: theme.palette.background.default,
+  },
+  headerContent: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    backgroundColor: theme.palette.primary.main,
+    borderRadius: theme.spacing(0.5),
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: theme.palette.primary.contrastText,
+    fontWeight: 'bold',
+    fontSize: '0.875rem',
+  },
+  navItem: {
+    margin: theme.spacing(0.5, 1),
+    borderRadius: theme.spacing(1),
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  navItemCollapsed: {
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  navItemIcon: {
+    color: theme.palette.text.secondary,
+  },
+  statusSection: {
+    padding: theme.spacing(2),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    backgroundColor: theme.palette.background.default,
+  },
+  statusChip: {
+    backgroundColor: theme.palette.success.main,
+    color: theme.palette.success.contrastText,
+    fontSize: '0.75rem',
+    fontWeight: 'bold',
+  },
+  collapseButton: {
+    color: theme.palette.text.secondary,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+}));
 
 const navigationItems = [
   { 
     name: 'Dashboard', 
-    href: '/', 
-    icon: LayoutDashboard,
-    description: 'Overview of all alerts'
+    icon: DashboardIcon,
+    description: 'Overview of all alerts',
+    action: () => alert('Dashboard clicked')
   },
   { 
     name: 'Alerts', 
-    href: '/alerts', 
-    icon: Bell,
-    description: 'Manage your alerts'
+    icon: BellIcon,
+    description: 'Manage your alerts',
+    action: () => alert('Alerts clicked')
   },
   { 
     name: 'Create Alert', 
-    href: '/create', 
-    icon: Plus,
-    description: 'Add new alert'
+    icon: PlusIcon,
+    description: 'Add new alert',
+    action: () => alert('Create Alert clicked')
   },
   { 
     name: 'Providers', 
-    href: '/providers', 
-    icon: Settings,
-    description: 'Configure monitoring providers'
+    icon: SettingsIcon,
+    description: 'Configure monitoring providers',
+    action: () => alert('Providers clicked')
   },
 ];
 
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const location = useLocation();
+  const classes = useStyles();
 
   return (
-    <div className={cn(
-      "bg-white shadow-lg border-r border-gray-200 transition-all duration-300 flex flex-col",
-      collapsed ? "w-16" : "w-64"
-    )}>
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+    <Drawer
+      variant="permanent"
+      className={`${classes.drawer} ${collapsed ? classes.drawerCollapsed : ''}`}
+      classes={{
+        paper: `${classes.drawerPaper} ${collapsed ? classes.drawerPaperCollapsed : ''}`,
+      }}
+    >
+      <div className={classes.header}>
+        <div className={classes.headerContent}>
           {!collapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold text-sm">KD</span>
+            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+              <div className={classes.logo}>
+                KD
               </div>
-              <span className="font-semibold text-gray-900">KeninDuty</span>
-            </div>
+              <Typography variant="h6" style={{ fontWeight: 600 }}>
+                KeninDuty
+              </Typography>
+            </Box>
           )}
-          <button
+          <IconButton
+            size="small"
             onClick={() => setCollapsed(!collapsed)}
-            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+            className={classes.collapseButton}
           >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </div>
+      </div>
+
+      <List>
+        {navigationItems.map((item) => (
+          <ListItem
+            key={item.name}
+            button
+            onClick={item.action}
+            className={`${classes.navItem} ${collapsed ? classes.navItemCollapsed : ''}`}
+          >
+            <ListItemIcon className={classes.navItemIcon}>
+              <item.icon />
+            </ListItemIcon>
+            {!collapsed && (
+              <ListItemText
+                primary={item.name}
+                secondary={item.description}
+                primaryTypographyProps={{ 
+                  variant: 'body2', 
+                  style: { fontWeight: 500 } 
+                }}
+                secondaryTypographyProps={{ 
+                  variant: 'caption',
+                  color: 'textSecondary'
+                }}
+              />
             )}
-          </button>
-        </div>
-      </div>
+          </ListItem>
+        ))}
+      </List>
 
-      <nav className="flex-1 p-2">
-        <ul className="space-y-1">
-          {navigationItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <li key={item.name}>
-                <NavLink
-                  to={item.href}
-                  className={cn(
-                    "flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
-                    isActive
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  )}
-                >
-                  <item.icon className={cn(
-                    "flex-shrink-0 w-5 h-5 transition-colors",
-                    isActive ? "text-blue-700" : "text-gray-400 group-hover:text-gray-600",
-                    collapsed ? "mx-auto" : "mr-3"
-                  )} />
-                  {!collapsed && (
-                    <div className="flex-1">
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {item.description}
-                      </div>
-                    </div>
-                  )}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="p-4 border-t border-gray-200">
-        <div className={cn(
-          "flex items-center space-x-3",
-          collapsed && "justify-center"
-        )}>
-          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">ON</span>
-          </div>
+      <div className={classes.statusSection}>
+        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+          <Chip
+            icon={<CheckCircleIcon />}
+            label="ON"
+            className={classes.statusChip}
+            size="small"
+          />
           {!collapsed && (
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Connected</div>
-              <div className="text-xs text-gray-500">All systems operational</div>
-            </div>
+            <Box flex={1}>
+              <Typography variant="body2" style={{ fontWeight: 500 }}>
+                Connected
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                All systems operational
+              </Typography>
+            </Box>
           )}
-        </div>
+        </Box>
       </div>
-    </div>
+    </Drawer>
   );
 };

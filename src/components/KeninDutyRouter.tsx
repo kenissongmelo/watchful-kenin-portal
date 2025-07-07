@@ -1,38 +1,61 @@
-
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Box, Typography, Container } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core/styles';
 import { Dashboard } from './Dashboard';
-import { AlertsList } from './AlertsList';
-import { CreateAlert } from './CreateAlert';
-import { ProvidersConfig } from './ProvidersConfig';
 import { Sidebar } from './Sidebar';
 
+const useStyles = makeStyles((theme) => ({
+  root: {
+    display: 'flex',
+    minHeight: '100vh',
+  },
+  content: {
+    display: 'flex',
+    flex: 1,
+  },
+  main: {
+    flex: 1,
+    padding: theme.spacing(3),
+    backgroundColor: theme.palette.background.default,
+  },
+  container: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+  },
+  header: {
+    marginBottom: theme.spacing(3),
+  },
+  title: {
+    fontSize: '2rem',
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+    marginBottom: theme.spacing(1),
+  },
+  subtitle: {
+    color: theme.palette.text.secondary,
+    fontSize: '1rem',
+  },
+}));
+
 export const KeninDutyRouter = () => {
+  const classes = useStyles();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">KD</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">KeninDuty</h1>
-            <p className="text-sm text-gray-600">Alert Management for Developer Portal</p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex">
+    <div className={classes.root}>
+      <div className={classes.content}>
         <Sidebar />
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/alerts" element={<AlertsList />} />
-              <Route path="/create" element={<CreateAlert />} />
-              <Route path="/providers" element={<ProvidersConfig />} />
-            </Routes>
-          </div>
+        <main className={classes.main}>
+          <Container className={classes.container}>
+            <div className={classes.header}>
+              <Typography variant="h3" component="h1" className={classes.title}>
+                KeninDuty
+              </Typography>
+              <Typography variant="body1" className={classes.subtitle}>
+                Intelligent Alert Management Platform
+              </Typography>
+            </div>
+            <Dashboard />
+          </Container>
         </main>
       </div>
     </div>

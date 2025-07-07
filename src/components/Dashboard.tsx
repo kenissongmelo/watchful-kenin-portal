@@ -1,16 +1,104 @@
-
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Bell, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock,
-  TrendingUp,
-  Activity
-} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Chip,
+  LinearProgress,
+  Box,
+  Grid,
+  Paper,
+  Divider
+} from '@material-ui/core';
+import {
+  Notifications as BellIcon,
+  Warning as AlertTriangleIcon,
+  CheckCircle as CheckCircleIcon,
+  Schedule as ClockIcon,
+  TrendingUp as TrendingUpIcon,
+  Timeline as ActivityIcon
+} from '@material-ui/icons';
+import { makeStyles } from '@material-ui/core/styles';
+
+const useStyles = makeStyles((theme) => ({
+  root: {
+    padding: theme.spacing(3),
+  },
+  statsGrid: {
+    marginBottom: theme.spacing(4),
+  },
+  statCard: {
+    height: '100%',
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.spacing(1),
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      boxShadow: theme.shadows[4],
+    },
+  },
+  statHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing(1),
+  },
+  statValue: {
+    fontSize: '2rem',
+    fontWeight: 'bold',
+    marginBottom: theme.spacing(0.5),
+    color: theme.palette.text.primary,
+  },
+  statDescription: {
+    fontSize: '0.875rem',
+    color: theme.palette.text.secondary,
+  },
+  contentGrid: {
+    marginTop: theme.spacing(3),
+  },
+  contentCard: {
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.spacing(1),
+  },
+  alertItem: {
+    padding: theme.spacing(2),
+    backgroundColor: theme.palette.background.default,
+    borderRadius: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+    border: `1px solid ${theme.palette.divider}`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  alertHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing(0.5),
+  },
+  alertMeta: {
+    display: 'flex',
+    gap: theme.spacing(1),
+    fontSize: '0.75rem',
+    color: theme.palette.text.secondary,
+  },
+  progressItem: {
+    marginBottom: theme.spacing(2),
+  },
+  progressHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing(0.5),
+  },
+  sectionTitle: {
+    fontSize: '1.25rem',
+    fontWeight: 600,
+    marginBottom: theme.spacing(2),
+    color: theme.palette.text.primary,
+  },
+}));
 
 const mockStats = {
   totalAlerts: 24,
@@ -47,144 +135,207 @@ const mockRecentAlerts = [
 ];
 
 export const Dashboard = () => {
+  const classes = useStyles();
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'critical': return 'error';
+      case 'warning': return 'default';
+      case 'resolved': return 'default';
+      default: return 'default';
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className={classes.root}>
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-900">Total Alerts</CardTitle>
-            <Bell className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{mockStats.totalAlerts}</div>
-            <p className="text-xs text-blue-600 mt-1">Active monitoring rules</p>
-          </CardContent>
-        </Card>
+      <Grid container spacing={3} className={classes.statsGrid}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className={classes.statCard}>
+            <CardContent>
+              <div className={classes.statHeader}>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  Total Alerts
+                </Typography>
+                <BellIcon color="primary" />
+              </div>
+              <Typography className={classes.statValue}>
+                {mockStats.totalAlerts}
+              </Typography>
+              <Typography className={classes.statDescription}>
+                Active monitoring rules
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-900">Active Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-900">{mockStats.activeAlerts}</div>
-            <p className="text-xs text-red-600 mt-1">Require attention</p>
-          </CardContent>
-        </Card>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className={classes.statCard}>
+            <CardContent>
+              <div className={classes.statHeader}>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  Active Alerts
+                </Typography>
+                <AlertTriangleIcon color="error" />
+              </div>
+              <Typography className={classes.statValue}>
+                {mockStats.activeAlerts}
+              </Typography>
+              <Typography className={classes.statDescription}>
+                Require attention
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-900">Resolved Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">{mockStats.resolvedToday}</div>
-            <p className="text-xs text-green-600 mt-1">Issues resolved</p>
-          </CardContent>
-        </Card>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className={classes.statCard}>
+            <CardContent>
+              <div className={classes.statHeader}>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  Resolved Today
+                </Typography>
+                <CheckCircleIcon color="primary" />
+              </div>
+              <Typography className={classes.statValue}>
+                {mockStats.resolvedToday}
+              </Typography>
+              <Typography className={classes.statDescription}>
+                Successfully handled
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-900">Avg Response</CardTitle>
-            <Clock className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-900">{mockStats.avgResponseTime}</div>
-            <p className="text-xs text-purple-600 mt-1">Response time</p>
-          </CardContent>
-        </Card>
-      </div>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className={classes.statCard}>
+            <CardContent>
+              <div className={classes.statHeader}>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  Avg Response
+                </Typography>
+                <ClockIcon color="primary" />
+              </div>
+              <Typography className={classes.statValue}>
+                {mockStats.avgResponseTime}
+              </Typography>
+              <Typography className={classes.statDescription}>
+                Mean time to resolve
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Content Grid */}
+      <Grid container spacing={3} className={classes.contentGrid}>
         {/* Recent Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-blue-600" />
-              <span>Recent Alerts</span>
-            </CardTitle>
-            <CardDescription>Latest alert activities across all services</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+        <Grid item xs={12} md={6}>
+          <Card className={classes.contentCard}>
+            <CardContent>
+              <Typography className={classes.sectionTitle}>
+                Recent Alerts
+              </Typography>
               {mockRecentAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h4 className="text-sm font-medium text-gray-900">{alert.title}</h4>
-                      <Badge variant={
-                        alert.status === 'critical' ? 'destructive' :
-                        alert.status === 'warning' ? 'default' : 'secondary'
-                      }>
-                        {alert.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-3 text-xs text-gray-500">
-                      <span>{alert.provider}</span>
-                      <span>•</span>
-                      <span>{alert.service}</span>
-                      <span>•</span>
-                      <span>{alert.timestamp}</span>
-                    </div>
+                <div key={alert.id} className={classes.alertItem}>
+                  <div className={classes.alertHeader}>
+                    <Typography variant="body2" style={{ fontWeight: 500 }}>
+                      {alert.title}
+                    </Typography>
+                    <Chip
+                      label={alert.status}
+                      size="small"
+                      color={getStatusColor(alert.status) as any}
+                    />
+                  </div>
+                  <div className={classes.alertMeta}>
+                    <span>{alert.provider}</span>
+                    <span>•</span>
+                    <span>{alert.service}</span>
+                    <span>•</span>
+                    <span>{alert.timestamp}</span>
                   </div>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Grid>
 
         {/* System Health */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              <span>System Health</span>
-            </CardTitle>
-            <CardDescription>Overall health metrics for monitored services</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">Service Availability</span>
-                  <span className="font-medium text-green-600">99.8%</span>
-                </div>
-                <Progress value={99.8} className="h-2" />
-              </div>
+        <Grid item xs={12} md={6}>
+          <Card className={classes.contentCard}>
+            <CardContent>
+              <Typography className={classes.sectionTitle}>
+                System Health
+              </Typography>
               
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">Alert Response Rate</span>
-                  <span className="font-medium text-blue-600">96.2%</span>
+              <div className={classes.progressItem}>
+                <div className={classes.progressHeader}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    API Response Time
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    95%
+                  </Typography>
                 </div>
-                <Progress value={96.2} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">Provider Connectivity</span>
-                  <span className="font-medium text-green-600">100%</span>
-                </div>
-                <Progress value={100} className="h-2" />
+                <LinearProgress 
+                  variant="determinate" 
+                  value={95} 
+                  style={{ height: 6, borderRadius: 3 }}
+                />
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">2</div>
-                    <div className="text-xs text-gray-500">Connected Providers</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">12</div>
-                    <div className="text-xs text-gray-500">Monitored Services</div>
-                  </div>
+              <div className={classes.progressItem}>
+                <div className={classes.progressHeader}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    Database Performance
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    88%
+                  </Typography>
                 </div>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={88} 
+                  style={{ height: 6, borderRadius: 3 }}
+                />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
+              <div className={classes.progressItem}>
+                <div className={classes.progressHeader}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    Memory Usage
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    72%
+                  </Typography>
+                </div>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={72} 
+                  style={{ height: 6, borderRadius: 3 }}
+                />
+              </div>
+
+              <div className={classes.progressItem}>
+                <div className={classes.progressHeader}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    CPU Utilization
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    65%
+                  </Typography>
+                </div>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={65} 
+                  style={{ height: 6, borderRadius: 3 }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </div>
   );
 };

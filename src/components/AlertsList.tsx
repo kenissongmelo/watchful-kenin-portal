@@ -1,22 +1,84 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  ExternalLink,
-  Play,
-  Pause,
-  Plus,
-  Bell
-} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Chip,
+  IconButton,
+  Box,
+  Grid,
+  Paper,
+  Divider
+} from '@material-ui/core';
+import {
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  OpenInNew as ExternalLinkIcon,
+  PlayArrow as PlayIcon,
+  Pause as PauseIcon,
+  Add as PlusIcon,
+  Notifications as BellIcon
+} from '@material-ui/icons';
+import { makeStyles } from '@material-ui/core/styles';
+
+const useStyles = makeStyles((theme) => ({
+  root: {
+    padding: theme.spacing(3),
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing(3),
+  },
+  filtersCard: {
+    marginBottom: theme.spacing(3),
+  },
+  filterRow: {
+    display: 'flex',
+    gap: theme.spacing(2),
+    flexWrap: 'wrap',
+  },
+  searchField: {
+    flex: 1,
+    minWidth: 250,
+  },
+  selectField: {
+    minWidth: 150,
+  },
+  alertCard: {
+    marginBottom: theme.spacing(2),
+    '&:hover': {
+      boxShadow: theme.shadows[4],
+    },
+  },
+  alertHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  alertContent: {
+    padding: theme.spacing(2),
+  },
+  alertActions: {
+    display: 'flex',
+    gap: theme.spacing(1),
+  },
+  statusChip: {
+    marginLeft: theme.spacing(1),
+  },
+  providerChip: {
+    marginTop: theme.spacing(1),
+  },
+}));
 
 const mockAlerts = [
   {
@@ -55,11 +117,11 @@ const mockAlerts = [
 ];
 
 export const AlertsList = () => {
+  const classes = useStyles();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [alerts, setAlerts] = useState(mockAlerts);
-  const { toast } = useToast();
 
   const filteredAlerts = alerts.filter(alert => {
     const matchesSearch = alert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,11 +133,7 @@ export const AlertsList = () => {
   });
 
   const handleCreateAlert = () => {
-    toast({
-      title: "Criar Alerta",
-      description: "Redirecionando para página de criação de alerta...",
-    });
-    // Navegação será implementada com router
+    alert('Criar Alerta - Redirecionando para página de criação de alerta...');
     window.location.href = '/create';
   };
 
@@ -88,41 +146,25 @@ export const AlertsList = () => {
     
     const alert = alerts.find(a => a.id === alertId);
     const newStatus = alert?.status === 'active' ? 'pausado' : 'ativado';
-    
-    toast({
-      title: "Status Alterado",
-      description: `Alerta "${alert?.name}" foi ${newStatus}`,
-    });
+    alert(`Status Alterado - Alerta "${alert?.name}" foi ${newStatus}`);
   };
 
   const handleEditAlert = (alertId: number) => {
     const alert = alerts.find(a => a.id === alertId);
-    toast({
-      title: "Editar Alerta",
-      description: `Editando alerta: ${alert?.name}`,
-    });
-    console.log('Editing alert:', alertId);
+    alert(`Editar Alerta - Editando alerta: ${alert?.name}`);
   };
 
   const handleViewExternal = (alertId: number) => {
     const alert = alerts.find(a => a.id === alertId);
-    toast({
-      title: "Link Externo",
-      description: `Abrindo ${alert?.provider} para o alerta: ${alert?.name}`,
-    });
-    console.log('Opening external link for alert:', alertId);
+    alert(`Link Externo - Abrindo ${alert?.provider} para o alerta: ${alert?.name}`);
   };
 
   const handleDeleteAlert = (alertId: number) => {
     const alert = alerts.find(a => a.id === alertId);
     
-    if (confirm(`Tem certeza que deseja excluir o alerta "${alert?.name}"?`)) {
+    if (window.confirm(`Tem certeza que deseja excluir o alerta "${alert?.name}"?`)) {
       setAlerts(prev => prev.filter(a => a.id !== alertId));
-      toast({
-        title: "Alerta Excluído",
-        description: `Alerta "${alert?.name}" foi removido com sucesso`,
-        variant: "destructive",
-      });
+      alert(`Alerta Excluído - Alerta "${alert?.name}" foi removido com sucesso`);
     }
   };
 
@@ -130,160 +172,154 @@ export const AlertsList = () => {
     setSearchTerm('');
     setFilterProvider('all');
     setFilterStatus('all');
-    toast({
-      title: "Filtros Limpos",
-      description: "Todos os filtros foram removidos",
-    });
+    alert('Filtros Limpos - Todos os filtros foram removidos');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className={classes.root}>
+      <div className={classes.header}>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Alert Management</h2>
-          <p className="text-gray-600">Manage and configure your monitoring alerts</p>
+          <Typography variant="h4" component="h2">
+            Alert Management
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Manage and configure your monitoring alerts
+          </Typography>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreateAlert}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<PlusIcon />}
+          onClick={handleCreateAlert}
+        >
           Create Alert
         </Button>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search alerts or services..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+      <Card className={classes.filtersCard}>
+        <CardContent>
+          <div className={classes.filterRow}>
+            <TextField
+              className={classes.searchField}
+              placeholder="Search alerts or services..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon color="action" />,
+              }}
+            />
             
-            <Select value={filterProvider} onValueChange={setFilterProvider}>
-              <SelectTrigger className="w-40">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Providers</SelectItem>
-                <SelectItem value="new relic">New Relic</SelectItem>
-                <SelectItem value="datadog">Datadog</SelectItem>
-              </SelectContent>
-            </Select>
+            <FormControl className={classes.selectField}>
+              <InputLabel>Provider</InputLabel>
+              <Select
+                value={filterProvider}
+                onChange={(e) => setFilterProvider(e.target.value as string)}
+                startAdornment={<FilterIcon />}
+              >
+                <MenuItem value="all">All Providers</MenuItem>
+                <MenuItem value="new relic">New Relic</MenuItem>
+                <MenuItem value="datadog">Datadog</MenuItem>
+              </Select>
+            </FormControl>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-              </SelectContent>
-            </Select>
+            <FormControl className={classes.selectField}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as string)}
+              >
+                <MenuItem value="all">All Status</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="paused">Paused</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Button
+              variant="outlined"
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Alerts Grid */}
-      <div className="grid gap-4">
+      <div>
         {filteredAlerts.map((alert) => (
-          <Card key={alert.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{alert.name}</h3>
-                    <Badge variant={alert.status === 'active' ? 'default' : 'secondary'}>
-                      {alert.status}
-                    </Badge>
-                    <Badge variant="outline">{alert.provider}</Badge>
-                  </div>
+          <Card key={alert.id} className={classes.alertCard}>
+            <CardContent className={classes.alertContent}>
+              <div className={classes.alertHeader}>
+                <div style={{ flex: 1 }}>
+                  <Typography variant="h6" component="h3">
+                    {alert.name}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Service: {alert.service}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Threshold: {alert.threshold}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Last Triggered: {alert.lastTriggered}
+                  </Typography>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
-                    <div>
-                      <span className="font-medium">Service:</span> {alert.service}
-                    </div>
-                    <div>
-                      <span className="font-medium">Threshold:</span> {alert.threshold}
-                    </div>
-                    <div>
-                      <span className="font-medium">Last Triggered:</span> {alert.lastTriggered}
-                    </div>
-                    <div>
-                      <span className="font-medium">Created:</span> {alert.createdAt}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                    <div className="text-xs text-gray-500 mb-1">Query:</div>
-                    <code className="text-sm font-mono text-gray-800 break-all">{alert.query}</code>
-                  </div>
+                  <Box mt={1}>
+                    <Chip
+                      label={alert.status}
+                      color={alert.status === 'active' ? 'primary' : 'default'}
+                      size="small"
+                      className={classes.statusChip}
+                    />
+                    <Chip
+                      label={alert.provider}
+                      variant="outlined"
+                      size="small"
+                      className={classes.providerChip}
+                    />
+                  </Box>
                 </div>
-
-                <div className="flex items-center space-x-2 ml-4">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
+                
+                <div className={classes.alertActions}>
+                  <IconButton
+                    size="small"
                     onClick={() => handleToggleStatus(alert.id)}
-                    title={alert.status === 'active' ? 'Pausar alerta' : 'Ativar alerta'}
+                    color={alert.status === 'active' ? 'primary' : 'default'}
                   >
-                    {alert.status === 'active' ? (
-                      <Pause className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
+                    {alert.status === 'active' ? <PauseIcon /> : <PlayIcon />}
+                  </IconButton>
+                  <IconButton
+                    size="small"
                     onClick={() => handleEditAlert(alert.id)}
-                    title="Editar alerta"
                   >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
                     onClick={() => handleViewExternal(alert.id)}
-                    title="Ver no provider externo"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-red-600 hover:text-red-700"
+                    <ExternalLinkIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
                     onClick={() => handleDeleteAlert(alert.id)}
-                    title="Excluir alerta"
+                    color="secondary"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <DeleteIcon />
+                  </IconButton>
                 </div>
               </div>
+              
+              <Divider style={{ margin: '16px 0' }} />
+              
+              <Typography variant="body2" color="textSecondary">
+                <strong>Query:</strong> {alert.query}
+              </Typography>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {filteredAlerts.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <Bell className="w-12 h-12 mx-auto" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>
-            <p className="text-gray-600 mb-4">Try adjusting your search or filter criteria</p>
-            <Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
