@@ -56,6 +56,7 @@ interface Alert {
   condition?: string;
   service?: string;
   hostname?: string;
+  message?: string;
 }
 
 interface AlertCardProps {
@@ -83,6 +84,32 @@ export const AlertCard: React.FC<AlertCardProps> = ({
 
   const isWaitingForProvider = alert.status === 'acknowledged' && !isResolvedByProvider;
 
+  const getDisplayTitle = () => {
+    switch (alert.provider) {
+      case 'newrelic':
+        return alert.message || alert.description || 'Alerta New Relic';
+      case 'datadog':
+        return alert.title || alert.description || 'Alerta Datadog';
+      case 'grafana':
+        return alert.description || alert.title || 'Alerta Grafana';
+      default:
+        return alert.description || alert.title || 'Alerta sem descrição';
+    }
+  };
+
+  const getTechnicalId = () => {
+    switch (alert.provider) {
+      case 'newrelic':
+        return alert.title || alert.providerAlertId;
+      case 'datadog':
+        return alert.providerAlertId || alert.title;
+      case 'grafana':
+        return alert.providerAlertId || alert.title;
+      default:
+        return alert.title || alert.providerAlertId;
+    }
+  };
+
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - new Date(date).getTime();
@@ -100,11 +127,11 @@ export const AlertCard: React.FC<AlertCardProps> = ({
     <GlassCard sx={{ height: '100%', cursor: 'pointer' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
         <Box sx={{ flex: 1 }}>
-          <Subtitle sx={{ mb: 1, fontSize: '1.1rem' }}>
-            {alert.title}
+          <Subtitle sx={{ mb: 1, fontSize: '1.1rem', fontWeight: 'bold' }}>
+            {getDisplayTitle()}
           </Subtitle>
-          <BodyText sx={{ mb: 2, fontWeight: 'bold', color: 'text.primary', fontSize: '1rem' }}>
-            {alert.description}
+          <BodyText sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+            ID: {getTechnicalId()}
           </BodyText>
         </Box>
         <SeverityChip severity={alert.severity} size="small" />

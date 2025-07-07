@@ -108,6 +108,23 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
       saveLogs();
     }
     
+    // Também adicionar ao realTimeLogs para o frontend
+    const realTimeLog = {
+      id: log.id,
+      timestamp: log.timestamp,
+      level: log.level,
+      message: log.message,
+      callId: log.callId,
+      details: log.details
+    };
+    
+    realTimeLogs.push(realTimeLog);
+    
+    // Manter apenas os últimos 100 logs em tempo real
+    if (realTimeLogs.length > 100) {
+      realTimeLogs = realTimeLogs.slice(-100);
+    }
+    
     logger.info(`[${level.toUpperCase()}] [${category.toUpperCase()}] ${message}`, details);
   }
 
@@ -423,7 +440,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
       
-      addSystemLog('info', 'system', `Inicializando chamada para time: ${team.name}`, callId, {
+      addSystemLog('info', 'system', `Inicializando chamada para time: ${team.name}`, callId, undefined, teamId, undefined, {
         teamId,
         teamName: team.name,
         membersCount: team.members.length
@@ -436,7 +453,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
         return res.status(400).json({ success: false, error: 'No available members in team' });
       }
       
-      addSystemLog('info', 'system', `Membros disponíveis encontrados: ${availableMembers.length}`, callId, {
+      addSystemLog('info', 'system', `Membros disponíveis encontrados: ${availableMembers.length}`, callId, undefined, teamId, undefined, {
         members: availableMembers.map(m => ({ name: m.name, role: m.role, phone: m.phone }))
       });
 
@@ -450,7 +467,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
         retries: 0
       };
       
-      addSystemLog('success', 'system', `Chamada inicializada com sucesso`, callId, {
+      addSystemLog('success', 'system', `Chamada inicializada com sucesso`, callId, undefined, teamId, undefined, {
         firstMember: {
           name: firstMember.name,
           phone: firstMember.phone,
@@ -528,10 +545,10 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
         });
       }
       
-      addSystemLog('info', 'call', `Callback recebido: ${status}`, callId, {
+      addSystemLog('info', 'call', `Callback recebido: ${status}`, callId, undefined, callState.teamId, undefined, {
         status,
-        timestamp,
-        notes,
+        timestamp: payload.timestamp,
+        notes: payload.notes,
         duration: payload.duration
       });
       
@@ -594,11 +611,11 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
         escalationReason = 'Chamada atendida com sucesso';
         delete callAttemptsMap[callId];
         
-        addSystemLog('success', 'call', `✅ CHAMADA ATENDIDA - Alerta resolvido!`, callId, {
+        addSystemLog('success', 'call', `✅ CHAMADA ATENDIDA - Alerta resolvido!`, callId, undefined, callState.teamId, undefined, {
           memberName: availableMembers[callState.memberIndex]?.name,
           memberPhone: availableMembers[callState.memberIndex]?.phone,
           duration: payload.duration,
-          totalAttempts: alert?.attempts?.length || 0,
+          totalAttempts: callState.retries + 1,
           reason: 'Chamada atendida com sucesso'
         });
         
@@ -607,7 +624,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
           memberName: availableMembers[callState.memberIndex]?.name,
           memberPhone: availableMembers[callState.memberIndex]?.phone,
           duration: payload.duration,
-          totalAttempts: alert?.attempts?.length || 0,
+          totalAttempts: callState.retries + 1,
           reason: 'Chamada atendida com sucesso',
           alertStatus: alert?.status,
           timestamp: new Date().toISOString()
@@ -633,7 +650,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
           nextNumber = nextMember?.phone; // Mesmo número até completar retries
           escalationReason = `Retry automático ${callState.retries + 1}/${maxRetries} para ${nextMember?.name}`;
           
-          addSystemLog('warning', 'call', `🔄 RETRY AGENDADO - Tentativa ${callState.retries + 1}/${maxRetries}`, callId, {
+          addSystemLog('warning', 'call', `🔄 RETRY AGENDADO - Tentativa ${callState.retries + 1}/${maxRetries}`, callId, undefined, callState.teamId, undefined, {
             memberName: nextMember?.name,
             memberPhone: nextMember?.phone,
             retryNumber: callState.retries + 1,
@@ -664,7 +681,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
             nextNumber = nextMember?.phone;
             escalationReason = `Escalonamento após ${maxRetries} tentativas falhadas`;
             
-            addSystemLog('warning', 'call', `⬆️ ESCALONAMENTO - Próximo membro: ${nextMember?.name}`, callId, {
+            addSystemLog('warning', 'call', `⬆️ ESCALONAMENTO - Próximo membro: ${nextMember?.name}`, callId, undefined, callState.teamId, undefined, {
               previousMember: availableMembers[callState.memberIndex - 1]?.name,
               newMember: nextMember?.name,
               newMemberPhone: nextMember?.phone,
@@ -691,10 +708,10 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
             delete callAttemptsMap[callId];
             if (alert) alert.status = 'failed';
             
-            addSystemLog('error', 'call', `❌ TODOS OS MEMBROS ESGOTADOS - Chamada encerrada`, callId, {
+            addSystemLog('error', 'call', `❌ TODOS OS MEMBROS ESGOTADOS - Chamada encerrada`, callId, undefined, callState.teamId, undefined, {
               totalMembersTried: availableMembers.length,
               maxRetriesPerMember: maxRetries,
-              totalAttempts: availableMembers.length * maxRetries,
+              totalAttempts: callState.retries + 1,
               reason: 'Todos os membros foram tentados com máximo de retries'
             });
             
@@ -702,7 +719,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
               callId,
               totalMembersTried: availableMembers.length,
               maxRetriesPerMember: maxRetries,
-              totalAttempts: availableMembers.length * maxRetries,
+              totalAttempts: callState.retries + 1,
               reason: 'Todos os membros foram tentados com máximo de retries',
               alertStatus: alert?.status,
               timestamp: new Date().toISOString()
@@ -1180,6 +1197,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
 
       // Buscar alerta correspondente ao sessionId
       // Assumindo que sessionId pode ser o alertId ou um ID relacionado
+  
       let alert = alerts.find(a => a.id === sessionId || a.id.includes(sessionId));
       
       if (!alert) {

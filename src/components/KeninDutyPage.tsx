@@ -68,7 +68,8 @@ import {
   Speed as SpeedIcon,
   History as HistoryIcon,
   PhoneDisabled as PhoneDisabledIcon,
-  Block as BlockIcon
+  Block as BlockIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import { keninDutyService } from '../services/KeninDutyService';
 import { AlertCard } from './AlertCard';
@@ -108,6 +109,7 @@ interface Alert {
   id: string;
   title: string;
   description: string;
+  message?: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   provider: 'datadog' | 'newrelic' | 'grafana';
   providerAlertId: string;
@@ -171,9 +173,6 @@ export const KeninDutyPage = () => {
 
   // Dialog states
   const [createAlertDialog, setCreateAlertDialog] = useState(false);
-  const [createTeamDialog, setCreateTeamDialog] = useState(false);
-  const [editTeamDialog, setEditTeamDialog] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [alertHistoryDialog, setAlertHistoryDialog] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [alertForm, setAlertForm] = useState({
@@ -184,21 +183,16 @@ export const KeninDutyPage = () => {
     teamId: '',
     query: ''
   });
-  const [teamForm, setTeamForm] = useState({
-    name: '',
-    members: [{ name: '', phone: '', email: '', role: 'primary' as 'primary' | 'secondary' | 'escalation' }],
-    escalationPolicy: {
-      retryCount: 3,
-      retryIntervalMinutes: 5,
-      escalationDelayMinutes: 15
-    }
-  });
 
   // Pagination states
   const [alertsPage, setAlertsPage] = useState(0);
   const [alertsRowsPerPage, setAlertsRowsPerPage] = useState(6);
-  const [teamsPage, setTeamsPage] = useState(0);
-  const [teamsRowsPerPage, setTeamsRowsPerPage] = useState(4);
+
+  // Filter states
+  const [alertSearchTerm, setAlertSearchTerm] = useState('');
+  const [alertStatusFilter, setAlertStatusFilter] = useState('all');
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState('all');
+  const [alertProviderFilter, setAlertProviderFilter] = useState('all');
 
   useEffect(() => {
     fetchData();
@@ -253,6 +247,43 @@ export const KeninDutyPage = () => {
     setSnackbar({ open: true, message, severity });
   };
 
+  // Filtered alerts logic
+  const filteredAlerts = alerts.filter(alert => {
+    // Função para obter o texto de busca baseado no provider
+    const getSearchText = () => {
+      switch (alert.provider) {
+        case 'newrelic':
+          return (alert.message || alert.description || alert.title || '').toLowerCase();
+        case 'datadog':
+          return (alert.title || alert.description || '').toLowerCase();
+        case 'grafana':
+          return (alert.description || alert.title || '').toLowerCase();
+        default:
+          return (alert.description || alert.title || '').toLowerCase();
+      }
+    };
+
+    const searchText = getSearchText();
+    const matchesSearch = alertSearchTerm === '' || 
+      searchText.includes(alertSearchTerm.toLowerCase()) ||
+      alert.provider?.toLowerCase().includes(alertSearchTerm.toLowerCase());
+    
+    const matchesStatus = alertStatusFilter === 'all' || alert.status === alertStatusFilter;
+    const matchesSeverity = alertSeverityFilter === 'all' || alert.severity === alertSeverityFilter;
+    const matchesProvider = alertProviderFilter === 'all' || alert.provider === alertProviderFilter;
+    
+    return matchesSearch && matchesStatus && matchesSeverity && matchesProvider;
+  });
+
+  // Reset filters
+  const resetAlertFilters = () => {
+    setAlertSearchTerm('');
+    setAlertStatusFilter('all');
+    setAlertSeverityFilter('all');
+    setAlertProviderFilter('all');
+    setAlertsPage(0); // Reset to first page
+  };
+
   // Glassmorphism styles
   const glassmorphismStyle = {
     background: alpha(theme.palette.background.paper, 0.8),
@@ -268,19 +299,46 @@ export const KeninDutyPage = () => {
     }
 
     try {
+      // Preparar payload baseado no provider
+      let payload: any = {
+        severity: alertForm.severity,
+        teamId: alertForm.teamId,
+        query: alertForm.query,
+      };
+
+      // Adicionar campos específicos por provider
+      switch (alertForm.provider) {
+        case 'newrelic':
+          payload = {
+            ...payload,
+            title: `newrelic-${Date.now()}`, // ID técnico
+            description: alertForm.description, // Descrição geral
+            message: alertForm.title, // Título legível para New Relic
+            nrqlQuery: alertForm.query
+          };
+          break;
+        case 'datadog':
+          payload = {
+            ...payload,
+            title: alertForm.title, // Título legível para Datadog
+            description: alertForm.description // Descrição adicional
+          };
+          break;
+        case 'grafana':
+          payload = {
+            ...payload,
+            title: `grafana-${Date.now()}`, // ID técnico
+            description: alertForm.title // Título legível para Grafana
+          };
+          break;
+      }
+
       const response = await fetch(`${API_BASE}/providers/${alertForm.provider}/alerts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: alertForm.title,
-          description: alertForm.description,
-          severity: alertForm.severity,
-          teamId: alertForm.teamId,
-          query: alertForm.query,
-          ...(alertForm.provider === 'newrelic' && { nrqlQuery: alertForm.query })
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -305,166 +363,6 @@ export const KeninDutyPage = () => {
       }
     } catch (error) {
       showSnackbar('Erro ao criar alerta', 'error');
-    }
-  };
-
-  const handleCreateTeam = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/teams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(teamForm)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          showSnackbar('Time criado com sucesso!', 'success');
-          setCreateTeamDialog(false);
-          setTeamForm({
-            name: '',
-            members: [{ name: '', phone: '', email: '', role: 'primary' }],
-            escalationPolicy: { retryCount: 3, retryIntervalMinutes: 5, escalationDelayMinutes: 15 }
-          });
-          fetchData();
-        } else {
-          showSnackbar(result.error || 'Erro ao criar time', 'error');
-        }
-      } else {
-        showSnackbar('Erro ao criar time', 'error');
-      }
-    } catch (error) {
-      showSnackbar('Erro ao criar time', 'error');
-    }
-  };
-
-  const handleEditTeam = (team: Team) => {
-    // Verifica se o time ainda existe na lista atual
-    const currentTeam = teams.find(t => t.id === team.id);
-    if (!currentTeam) {
-      showSnackbar('Time não encontrado. Pode ter sido excluído.', 'error');
-      fetchData(); // Recarrega os dados
-      return;
-    }
-
-    setEditingTeam(currentTeam);
-    setTeamForm({
-      name: currentTeam.name,
-      members: currentTeam.members.map(member => ({
-        name: member.name,
-        phone: member.phone,
-        email: member.email,
-        role: member.role
-      })),
-      escalationPolicy: currentTeam.escalationPolicy
-    });
-    setEditTeamDialog(true);
-  };
-
-  const handleUpdateTeam = async () => {
-    if (!editingTeam) return;
-    
-    try {
-      const response = await fetch(`${API_BASE}/teams/${editingTeam.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(teamForm)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          showSnackbar('Time atualizado com sucesso!', 'success');
-          setEditTeamDialog(false);
-          setEditingTeam(null);
-          setTeamForm({
-            name: '',
-            members: [{ name: '', phone: '', email: '', role: 'primary' }],
-            escalationPolicy: { retryCount: 3, retryIntervalMinutes: 5, escalationDelayMinutes: 15 }
-          });
-          fetchData();
-        } else {
-          showSnackbar(result.error || 'Erro ao atualizar time', 'error');
-        }
-      } else if (response.status === 404) {
-        showSnackbar('Time não encontrado. Pode ter sido excluído.', 'error');
-        setEditTeamDialog(false);
-        setEditingTeam(null);
-        fetchData(); // Recarrega os dados para atualizar a lista
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        showSnackbar(errorData.error || `Erro ${response.status}: ${response.statusText}`, 'error');
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar time:', error);
-      showSnackbar('Erro de conexão ao atualizar time', 'error');
-    }
-  };
-
-  const handleDeleteTeam = async (teamId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este time?')) return;
-    
-    try {
-      const response = await fetch(`${API_BASE}/teams/${teamId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          showSnackbar('Time excluído com sucesso!', 'success');
-          fetchData();
-        } else {
-          showSnackbar(result.error || 'Erro ao excluir time', 'error');
-        }
-      } else if (response.status === 404) {
-        showSnackbar('Time não encontrado. Pode ter sido excluído anteriormente.', 'error');
-        fetchData(); // Recarrega os dados para atualizar a lista
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        showSnackbar(errorData.error || `Erro ${response.status}: ${response.statusText}`, 'error');
-      }
-    } catch (error) {
-      console.error('Erro ao excluir time:', error);
-      showSnackbar('Erro de conexão ao excluir time', 'error');
-    }
-  };
-
-  const handleRetryCall = async (alertId: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/calls/${alertId}/retry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (response.ok) {
-        showSnackbar('Tentativa de chamada iniciada', 'success');
-        fetchData();
-      } else {
-        showSnackbar('Erro ao tentar chamada', 'error');
-      }
-    } catch (error) {
-      showSnackbar('Erro ao tentar chamada', 'error');
-    }
-  };
-
-  const handleUpdateAlertStatus = async (alertId: string, status: 'acknowledged' | 'resolved') => {
-    try {
-      const response = await fetch(`${API_BASE}/alerts/${alertId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-
-      if (response.ok) {
-        showSnackbar(`Alerta ${status === 'acknowledged' ? 'reconhecido' : 'resolvido'}`, 'success');
-        fetchData();
-      } else {
-        showSnackbar('Erro ao atualizar status', 'error');
-      }
-    } catch (error) {
-      showSnackbar('Erro ao atualizar status', 'error');
     }
   };
 
@@ -609,17 +507,23 @@ export const KeninDutyPage = () => {
 
         {/* Filtros */}
         <GlassCard sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               label="Buscar alertas"
               variant="outlined"
               size="small"
               placeholder="Título, descrição ou provider..."
+              value={alertSearchTerm}
+              onChange={(e) => setAlertSearchTerm(e.target.value)}
               sx={{ minWidth: 250 }}
             />
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Status</InputLabel>
-              <Select label="Status" defaultValue="all">
+              <Select 
+                label="Status" 
+                value={alertStatusFilter}
+                onChange={(e) => setAlertStatusFilter(e.target.value)}
+              >
                 <MenuItem value="all">Todos</MenuItem>
                 <MenuItem value="active">Ativos</MenuItem>
                 <MenuItem value="acknowledged">Reconhecidos</MenuItem>
@@ -628,7 +532,11 @@ export const KeninDutyPage = () => {
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Severidade</InputLabel>
-              <Select label="Severidade" defaultValue="all">
+              <Select 
+                label="Severidade" 
+                value={alertSeverityFilter}
+                onChange={(e) => setAlertSeverityFilter(e.target.value)}
+              >
                 <MenuItem value="all">Todas</MenuItem>
                 <MenuItem value="critical">Crítica</MenuItem>
                 <MenuItem value="high">Alta</MenuItem>
@@ -638,21 +546,33 @@ export const KeninDutyPage = () => {
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Provider</InputLabel>
-              <Select label="Provider" defaultValue="all">
+              <Select 
+                label="Provider" 
+                value={alertProviderFilter}
+                onChange={(e) => setAlertProviderFilter(e.target.value)}
+              >
                 <MenuItem value="all">Todos</MenuItem>
                 <MenuItem value="newrelic">New Relic</MenuItem>
                 <MenuItem value="datadog">Datadog</MenuItem>
                 <MenuItem value="grafana">Grafana</MenuItem>
               </Select>
             </FormControl>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={resetAlertFilters}
+              startIcon={<ClearIcon />}
+            >
+              Limpar
+            </Button>
           </Box>
         </GlassCard>
 
         {/* Grid de Alertas */}
-        {alerts.length > 0 ? (
+        {filteredAlerts.length > 0 ? (
           <>
             <Grid container spacing={3}>
-              {alerts
+              {filteredAlerts
                 .slice(alertsPage * alertsRowsPerPage, alertsPage * alertsRowsPerPage + alertsRowsPerPage)
                 .map((alert) => (
                 <Grid item xs={12} md={6} lg={4} key={alert.id}>
@@ -660,8 +580,6 @@ export const KeninDutyPage = () => {
                     alert={alert}
                     teamName={teams.find(t => t.id === alert.teamId)?.name}
                     onShowHistory={handleShowAlertHistory}
-                    onUpdateStatus={handleUpdateAlertStatus}
-                    onRetryCall={handleRetryCall}
                     onCopyTeamId={(teamId) => {
                       navigator.clipboard.writeText(teamId);
                       showSnackbar('Team ID copiado!', 'success');
@@ -674,7 +592,7 @@ export const KeninDutyPage = () => {
             {/* Paginação */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
               <Pagination
-                count={Math.ceil(alerts.length / alertsRowsPerPage)}
+                count={Math.ceil(filteredAlerts.length / alertsRowsPerPage)}
                 page={alertsPage + 1}
                 onChange={(event, page) => setAlertsPage(page - 1)}
                 color="primary"
@@ -685,7 +603,7 @@ export const KeninDutyPage = () => {
             
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                Mostrando {alertsPage * alertsRowsPerPage + 1} a {Math.min((alertsPage + 1) * alertsRowsPerPage, alerts.length)} de {alerts.length} alertas
+                Mostrando {alertsPage * alertsRowsPerPage + 1} a {Math.min((alertsPage + 1) * alertsRowsPerPage, filteredAlerts.length)} de {filteredAlerts.length} alertas
               </Typography>
             </Box>
           </>
@@ -700,131 +618,6 @@ export const KeninDutyPage = () => {
                 onClick={() => setCreateAlertDialog(true)}
               >
                 Criar Primeiro Alerta
-              </ModernButton>
-            }
-          />
-        )}
-      </Box>
-
-      {/* Seção de Times */}
-      <Box sx={{ mt: 6 }}>
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <SectionTitle icon="👥">
-            Times
-          </SectionTitle>
-          <ModernButton
-            startIcon={<AddIcon />}
-            onClick={() => setCreateTeamDialog(true)}
-          >
-            Criar Time
-          </ModernButton>
-        </Box>
-
-        {teams.length > 0 ? (
-          <>
-            <Grid container spacing={3}>
-              {teams
-                .slice(teamsPage * teamsRowsPerPage, teamsPage * teamsRowsPerPage + teamsRowsPerPage)
-                .map((team) => (
-                <Grid item xs={12} md={6} key={team.id}>
-                  <GlassCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                          {team.name}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <ModernIconButton
-                            size="small"
-                            onClick={() => handleEditTeam(team)}
-                          >
-                            <EditIcon />
-                          </ModernIconButton>
-                          <ModernIconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDeleteTeam(team.id)}
-                          >
-                            <DeleteIcon />
-                          </ModernIconButton>
-                        </Box>
-                      </Box>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {team.members.length} membros
-                      </Typography>
-
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Membros:
-                        </Typography>
-                        <Stack spacing={1}>
-                          {team.members.slice(0, 3).map((member, index) => (
-                            <Box key={member.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip 
-                                label={member.role} 
-                                size="small" 
-                                color={member.role === 'primary' ? 'primary' : 'secondary'}
-                                variant="outlined"
-                              />
-                              <Typography variant="body2">
-                                {member.name}
-                              </Typography>
-                            </Box>
-                          ))}
-                          {team.members.length > 3 && (
-                            <Typography variant="body2" color="text.secondary">
-                              +{team.members.length - 3} mais...
-                            </Typography>
-                          )}
-                        </Stack>
-                      </Box>
-
-                      <Box>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Política de Escalonamento:
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Retry: {team.escalationPolicy.retryCount}x | 
-                          Intervalo: {team.escalationPolicy.retryIntervalMinutes}min | 
-                          Delay: {team.escalationPolicy.escalationDelayMinutes}min
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </GlassCard>
-                </Grid>
-              ))}
-            </Grid>
-            
-            {/* Paginação para Times */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <Pagination
-                count={Math.ceil(teams.length / teamsRowsPerPage)}
-                page={teamsPage + 1}
-                onChange={(event, page) => setTeamsPage(page - 1)}
-                color="primary"
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Mostrando {teamsPage * teamsRowsPerPage + 1} a {Math.min((teamsPage + 1) * teamsRowsPerPage, teams.length)} de {teams.length} times
-              </Typography>
-            </Box>
-          </>
-        ) : (
-          <EmptyState
-            icon="👥"
-            title="Nenhum time encontrado"
-            description="Crie seu primeiro time clicando no botão 'Criar Time'"
-            action={
-              <ModernButton
-                startIcon={<AddIcon />}
-                onClick={() => setCreateTeamDialog(true)}
-              >
-                Criar Primeiro Time
               </ModernButton>
             }
           />
@@ -857,7 +650,12 @@ export const KeninDutyPage = () => {
           📋 Histórico do Alerta
           {selectedAlert && (
             <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: 'normal' }}>
-              {selectedAlert.title}
+              {selectedAlert.provider === 'newrelic' 
+                ? (selectedAlert.message || selectedAlert.description || 'Alerta New Relic')
+                : selectedAlert.provider === 'datadog'
+                ? (selectedAlert.title || selectedAlert.description || 'Alerta Datadog')
+                : (selectedAlert.description || selectedAlert.title || 'Alerta sem descrição')
+              }
             </Typography>
           )}
         </DialogTitle>
@@ -865,102 +663,120 @@ export const KeninDutyPage = () => {
           {selectedAlert && (
             <Box>
               {/* Alert Info */}
-              <GlassCard sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Informações do Alerta
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2">
-                      <strong>ID:</strong> {selectedAlert.id}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Provider ID:</strong> {selectedAlert.providerAlertId}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Status:</strong> {selectedAlert.status}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Severidade:</strong> {selectedAlert.severity}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2">
-                      <strong>Criado:</strong> {new Date(selectedAlert.createdAt).toLocaleString('pt-BR')}
-                    </Typography>
-                    {selectedAlert.acknowledgedAt && (
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Informações do Alerta
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
                       <Typography variant="body2">
-                        <strong>Reconhecido:</strong> {new Date(selectedAlert.acknowledgedAt).toLocaleString('pt-BR')}
+                        <strong>ID:</strong> {selectedAlert.id}
                       </Typography>
-                    )}
-                    {selectedAlert.resolvedAt && (
                       <Typography variant="body2">
-                        <strong>Resolvido:</strong> {new Date(selectedAlert.resolvedAt).toLocaleString('pt-BR')}
+                        <strong>Provider ID:</strong> {selectedAlert.providerAlertId}
                       </Typography>
-                    )}
-                    <Typography variant="body2">
-                      <strong>Provider:</strong> {selectedAlert.provider}
-                    </Typography>
+                      <Typography variant="body2">
+                        <strong>Status:</strong> {selectedAlert.status}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Severidade:</strong> {selectedAlert.severity}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2">
+                        <strong>Mensagem:</strong> {
+                          selectedAlert.provider === 'newrelic' 
+                            ? (selectedAlert.message || selectedAlert.description || 'N/A')
+                            : selectedAlert.provider === 'datadog'
+                            ? (selectedAlert.title || selectedAlert.description || 'N/A')
+                            : (selectedAlert.description || selectedAlert.title || 'N/A')
+                        }
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Criado:</strong> {new Date(selectedAlert.createdAt).toLocaleString('pt-BR')}
+                      </Typography>
+                      {selectedAlert.acknowledgedAt && (
+                        <Typography variant="body2">
+                          <strong>Reconhecido:</strong> {new Date(selectedAlert.acknowledgedAt).toLocaleString('pt-BR')}
+                        </Typography>
+                      )}
+                      {selectedAlert.resolvedAt && (
+                        <Typography variant="body2">
+                          <strong>Resolvido:</strong> {new Date(selectedAlert.resolvedAt).toLocaleString('pt-BR')}
+                        </Typography>
+                      )}
+                      <Typography variant="body2">
+                        <strong>Provider:</strong> {selectedAlert.provider}
+                      </Typography>
+                    </Grid>
                   </Grid>
-                </Grid>
-              </GlassCard>
+                </CardContent>
+              </Card>
 
               {/* Call Attempts */}
-              <GlassCard>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Tentativas de Chamada
-                </Typography>
-                {selectedAlert.attempts && selectedAlert.attempts.length > 0 ? (
-                  <List>
-                    {selectedAlert.attempts.map((attempt, index) => (
-                      <React.Fragment key={index}>
-                        <ListItem>
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {getCallStatusIcon(attempt.status)}
-                                <Typography variant="body1">
-                                  Tentativa {index + 1} - {attempt.status}
-                                </Typography>
-                                {attempt.memberName && (
-                                  <Chip 
-                                    label={attempt.memberName} 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                  />
-                                )}
-                              </Box>
-                            }
-                            secondary={
-                              <Box>
-                                <Typography variant="body2">
-                                  <strong>Horário:</strong> {new Date(attempt.timestamp).toLocaleString('pt-BR')}
-                                </Typography>
-                                {attempt.duration && (
-                                  <Typography variant="body2">
-                                    <strong>Duração:</strong> {Math.round(attempt.duration / 1000)}s
-                                  </Typography>
-                                )}
-                                {attempt.notes && (
-                                  <Typography variant="body2">
-                                    <strong>Notas:</strong> {attempt.notes}
-                                  </Typography>
-                                )}
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {index < selectedAlert.attempts!.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                    Nenhuma tentativa de chamada registrada para este alerta.
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Tentativas de Chamada
                   </Typography>
-                )}
-              </GlassCard>
+                  {selectedAlert.attempts && selectedAlert.attempts.length > 0 ? (
+                    <List>
+                      {selectedAlert.attempts.map((attempt, index) => (
+                        <React.Fragment key={index}>
+                          <ListItem>
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {getCallStatusIcon(attempt.status)}
+                                  <Typography variant="body1">
+                                    Tentativa {index + 1} - {attempt.status}
+                                  </Typography>
+                                  {attempt.memberName && (
+                                    <Chip 
+                                      label={attempt.memberName} 
+                                      size="small" 
+                                      color="primary" 
+                                      variant="outlined"
+                                    />
+                                  )}
+                                </Box>
+                              }
+                              secondary={
+                                <Box>
+                                  <Typography variant="body2">
+                                    <strong>Horário:</strong> {new Date(attempt.timestamp).toLocaleString('pt-BR')}
+                                  </Typography>
+                                  {attempt.duration && (
+                                    <Typography variant="body2">
+                                      <strong>Duração:</strong> {Math.round(attempt.duration / 1000)}s
+                                    </Typography>
+                                  )}
+                                  {attempt.notes && (
+                                    <Typography variant="body2">
+                                      <strong>Notas:</strong> {attempt.notes}
+                                    </Typography>
+                                  )}
+                                  {attempt.callId && (
+                                    <Typography variant="body2">
+                                      <strong>Call ID:</strong> {attempt.callId}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                          {index < selectedAlert.attempts!.length - 1 && <Divider />}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                      Nenhuma tentativa de chamada registrada para este alerta.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
             </Box>
           )}
         </DialogContent>

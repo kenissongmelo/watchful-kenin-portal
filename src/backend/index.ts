@@ -28,6 +28,7 @@ interface Alert {
   id: string;
   title: string;
   description: string;
+  message?: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   provider: 'datadog' | 'newrelic' | 'grafana';
   providerAlertId: string;
@@ -196,6 +197,7 @@ export const keninDutyPlugin = createBackendPlugin({
               id: `alert-${Date.now()}`,
               title: data.title,
               description: data.description,
+              message: data.message,
               severity: data.severity,
               provider: data.provider,
               providerAlertId: `provider-${Date.now()}`, // Generate provider alert ID
@@ -382,11 +384,11 @@ export const keninDutyPlugin = createBackendPlugin({
             // For now, we'll simulate the creation
             const providerAlertId = `dd-${Date.now()}`;
             
-            // Create alert with owners field containing teamId
+            // Create alert with title field for Datadog (title is the main alert text)
             const newAlert: Alert = {
               id: `alert-${Date.now()}`,
-              title,
-              description,
+              title: title, // Datadog uses title as the main alert text
+              description: description || '',
               severity,
               provider: 'datadog',
               providerAlertId,
@@ -415,17 +417,18 @@ export const keninDutyPlugin = createBackendPlugin({
 
         router.post('/providers/newrelic/alerts', async (req, res) => {
           try {
-            const { nrqlQuery, title, description, severity, teamId } = req.body;
+            const { nrqlQuery, title, description, message, severity, teamId } = req.body;
             
             // Here you would integrate with New Relic API to create the alert
             // For now, we'll simulate the creation
             const providerAlertId = `nr-${Date.now()}`;
             
-            // Create alert with owners field containing teamId
+            // Create alert with message field for New Relic (message is the main alert text)
             const newAlert: Alert = {
               id: `alert-${Date.now()}`,
-              title,
-              description,
+              title: title, // Technical ID
+              description: description || '',
+              message: message, // New Relic uses message field for the actual alert text
               severity,
               provider: 'newrelic',
               providerAlertId,
@@ -460,11 +463,11 @@ export const keninDutyPlugin = createBackendPlugin({
             // For now, we'll simulate the creation
             const providerAlertId = `gf-${Date.now()}`;
             
-            // Create alert with owners field containing teamId
+            // Create alert with description field for Grafana (description is the main alert text)
             const newAlert: Alert = {
               id: `alert-${Date.now()}`,
-              title,
-              description,
+              title: title || '', // Technical ID or name
+              description: description, // Grafana uses description as the main alert text
               severity,
               provider: 'grafana',
               providerAlertId,

@@ -6,7 +6,6 @@ import {
   Typography,
   Chip,
   IconButton,
-  Collapse,
   List,
   ListItem,
   ListItemText,
@@ -66,11 +65,16 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
       if (callId) params.append('callId', callId);
       params.append('limit', '100');
 
+      console.log('Fetching logs from:', `http://localhost:7007/api/keninduty/logs/realtime?${params}`);
       const response = await fetch(`http://localhost:7007/api/keninduty/logs/realtime?${params}`);
       const data = await response.json();
 
+      console.log('Logs response:', data);
+
       if (data.success) {
-        setLogs(data.data.logs);
+        setLogs(data.data.logs || []);
+      } else {
+        console.error('Failed to fetch logs:', data.error);
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -114,6 +118,116 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
     }
   };
 
+  const getCallStatusFromMessage = (message: string) => {
+    const msg = message.toUpperCase();
+    
+    // Status de atendimento
+    if (msg.includes('ATENDIDA') || msg.includes('ATENDIDO') || msg.includes('RESPONDIDA') || msg.includes('RESPONDIDO')) 
+      return 'answered';
+    
+    // Status de retry
+    if (msg.includes('RETRY') || msg.includes('TENTATIVA') || msg.includes('REPETINDO') || msg.includes('REPETIR')) 
+      return 'retry';
+    
+    // Status de escalonamento
+    if (msg.includes('ESCALONAMENTO') || msg.includes('ESCALONADO') || msg.includes('PRÓXIMO NÍVEL') || msg.includes('NEXT LEVEL')) 
+      return 'escalation';
+    
+    // Status de esgotado
+    if (msg.includes('ESGOTADOS') || msg.includes('ESGOTADO') || msg.includes('EXAUSTADO') || msg.includes('FALHOU TODAS')) 
+      return 'exhausted';
+    
+    // Status de inicialização
+    if (msg.includes('INICIALIZANDO') || msg.includes('INICIANDO') || msg.includes('CRIANDO CHAMADA') || msg.includes('SETUP')) 
+      return 'init';
+    
+    // Status de sucesso
+    if (msg.includes('SUCESSO') || msg.includes('SUCCESS') || msg.includes('CONCLUÍDA') || msg.includes('FINALIZADA')) 
+      return 'success';
+    
+    // Status de erro
+    if (msg.includes('ERRO') || msg.includes('ERROR') || msg.includes('FALHA') || msg.includes('FAILED')) 
+      return 'error';
+    
+    // Status de informação
+    if (msg.includes('MEMBROS') || msg.includes('DISPONÍVEIS') || msg.includes('INFO') || msg.includes('INFORMATION')) 
+      return 'info';
+    
+    return 'info';
+  };
+
+  const getCallStatusColor = (status: string) => {
+    switch (status) {
+      case 'answered':
+        return '#4caf50'; // Verde vibrante para atendida
+      case 'retry':
+        return '#ff9800'; // Laranja para retry
+      case 'escalation':
+        return '#f57c00'; // Laranja escuro para escalonamento
+      case 'exhausted':
+        return '#f44336'; // Vermelho para esgotado
+      case 'init':
+        return '#2196f3'; // Azul para inicialização
+      case 'success':
+        return '#4caf50'; // Verde para sucesso
+      case 'error':
+        return '#d32f2f'; // Vermelho escuro para erro
+      default:
+        return '#757575'; // Cinza para info
+    }
+  };
+
+  const getCallStatusIcon = (status: string) => {
+    switch (status) {
+      case 'answered':
+        return '✅';
+      case 'retry':
+        return '🔄';
+      case 'escalation':
+        return '⬆️';
+      case 'exhausted':
+        return '❌';
+      case 'init':
+        return '🚀';
+      case 'success':
+        return '✅';
+      case 'error':
+        return '💥';
+      default:
+        return 'ℹ️';
+    }
+  };
+
+  const getCallStatusLabel = (status: string) => {
+    switch (status) {
+      case 'answered':
+        return 'ATENDIDA';
+      case 'retry':
+        return 'RETRY';
+      case 'escalation':
+        return 'ESCALONAMENTO';
+      case 'exhausted':
+        return 'ESGOTADO';
+      case 'init':
+        return 'INICIANDO';
+      case 'success':
+        return 'SUCESSO';
+      case 'error':
+        return 'ERRO';
+      default:
+        return 'INFO';
+    }
+  };
+
+  const getBackgroundColor = (status: string, level: string) => {
+    const statusColor = getCallStatusColor(status);
+    return `${statusColor}15`; // 15% de opacidade
+  };
+
+  const getBorderColor = (status: string) => {
+    return getCallStatusColor(status);
+  };
+
   const filteredLogs = logs.filter(log => {
     const matchesLevel = filterLevel === 'all' || log.level === filterLevel;
     const matchesSearch = searchTerm === '' || 
@@ -132,14 +246,6 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
       minute: '2-digit',
       second: '2-digit'
     });
-  };
-
-  const getCallStatusFromMessage = (message: string) => {
-    if (message.includes('ATENDIDA')) return 'answered';
-    if (message.includes('RETRY')) return 'retry';
-    if (message.includes('ESCALONAMENTO')) return 'escalation';
-    if (message.includes('ESGOTADOS')) return 'exhausted';
-    return 'info';
   };
 
   return (
@@ -175,7 +281,8 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
           </Box>
         </Box>
 
-        <Collapse in={expanded}>
+        {expanded && (
+          <>
           {/* Filtros */}
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField
@@ -213,72 +320,263 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
             </Button>
           </Box>
 
+          {/* Legenda de Status */}
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              📊 Legenda de Status:
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#4caf50', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  ✅
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ATENDIDA - Chamada foi atendida com sucesso
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#ff9800', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  🔄
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  RETRY - Tentativa de recontato
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#f57c00', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  ⬆️
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ESCALONAMENTO - Passou para próximo nível
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#f44336', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  ❌
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ESGOTADO - Retries esgotados
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#2196f3', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  🚀
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  INICIANDO - Chamada sendo inicializada
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  bgcolor: '#d32f2f', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  💥
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ERRO - Falha ou erro na operação
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
           {/* Lista de Logs */}
           <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
             {filteredLogs.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 4 }}>
                 <ScheduleIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   {loading ? 'Carregando logs...' : 'Nenhum log encontrado'}
                 </Typography>
+                {!loading && (
+                  <Box sx={{ textAlign: 'left', maxWidth: 600, mx: 'auto' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      <strong>Para gerar logs:</strong>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      1. Crie um alerta na aba "Alertas"
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      2. Inicialize uma chamada usando o endpoint: POST /api/keninduty/calls/init
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      3. Faça callbacks usando: POST /api/keninduty/calls/callback
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      4. Os logs aparecerão automaticamente aqui
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             ) : (
               <List dense>
-                {filteredLogs.map((log, index) => (
-                  <React.Fragment key={log.id}>
-                    <ListItem 
-                      sx={{ 
-                        bgcolor: log.level === 'error' ? 'error.light' : 
-                                log.level === 'warning' ? 'warning.light' :
-                                log.level === 'success' ? 'success.light' : 'background.paper',
-                        borderRadius: 1,
-                        mb: 1
-                      }}
-                    >
-                      <ListItemIcon>
-                        {getLevelIcon(log.level)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                            <Typography variant="body2" component="span" fontWeight="bold">
-                              {log.message}
-                            </Typography>
-                            <Chip
-                              label={log.level.toUpperCase()}
-                              size="small"
-                              color={getLevelColor(log.level) as any}
-                              variant="outlined"
-                            />
-                            {log.callId && (
+                {filteredLogs.map((log, index) => {
+                  const callStatus = getCallStatusFromMessage(log.message);
+                  const statusColor = getCallStatusColor(callStatus);
+                  const statusIcon = getCallStatusIcon(callStatus);
+                  const statusLabel = getCallStatusLabel(callStatus);
+                  const backgroundColor = getBackgroundColor(callStatus, log.level);
+                  const borderColor = getBorderColor(callStatus);
+                  
+                  return (
+                    <React.Fragment key={log.id}>
+                      <ListItem 
+                        sx={{ 
+                          bgcolor: backgroundColor,
+                          borderRadius: 2,
+                          mb: 1.5,
+                          border: `2px solid ${borderColor}`,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateX(4px)',
+                            boxShadow: 2
+                          }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 40 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            bgcolor: `${statusColor}20`,
+                            border: `2px solid ${statusColor}`,
+                            fontSize: '1.2rem'
+                          }}>
+                            {statusIcon}
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <Typography variant="body2" component="span" sx={{ 
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                color: statusColor
+                              }}>
+                                {log.message}
+                              </Typography>
                               <Chip
-                                label={`Call: ${log.callId.slice(-8)}`}
+                                label={statusLabel}
                                 size="small"
-                                variant="outlined"
-                                color="default"
+                                sx={{
+                                  bgcolor: statusColor,
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.7rem',
+                                  height: 20
+                                }}
                               />
-                            )}
-                          </Box>
-                        }
-                        secondary={
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatTimestamp(log.timestamp)}
-                            </Typography>
-                            {log.details && (
-                              <Box sx={{ mt: 1 }}>
-                                <Typography variant="caption" color="text.secondary">
-                                  <strong>Detalhes:</strong> {JSON.stringify(log.details, null, 2)}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                    {index < filteredLogs.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
+                              {log.callId && (
+                                <Chip
+                                  label={`Call: ${log.callId.slice(-8)}`}
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem', height: 20 }}
+                                />
+                              )}
+                            </Box>
+                          }
+                          secondary={
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" sx={{ 
+                                color: 'text.secondary',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }}>
+                                📅 {formatTimestamp(log.timestamp)}
+                              </Typography>
+                              {log.details && (
+                                <Box sx={{ mt: 1 }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: 'text.secondary',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 500
+                                  }}>
+                                    📋 Detalhes:
+                                  </Typography>
+                                  <pre style={{ 
+                                    fontSize: '0.7rem', 
+                                    margin: '4px 0', 
+                                    padding: '8px', 
+                                    backgroundColor: 'rgba(0,0,0,0.04)', 
+                                    borderRadius: '4px',
+                                    overflow: 'auto',
+                                    maxHeight: '80px',
+                                    border: '1px solid rgba(0,0,0,0.1)'
+                                  }}>
+                                    {JSON.stringify(log.details, null, 2)}
+                                  </pre>
+                                </Box>
+                              )}
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      {index < filteredLogs.length - 1 && (
+                        <Divider sx={{ 
+                          my: 1, 
+                          borderColor: 'rgba(0,0,0,0.1)',
+                          opacity: 0.5
+                        }} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </List>
             )}
           </Box>
@@ -305,7 +603,8 @@ export const RealTimeLogs: React.FC<RealTimeLogsProps> = ({
               )}
             </Box>
           </Box>
-        </Collapse>
+          </>
+        )}
       </CardContent>
     </Card>
   );

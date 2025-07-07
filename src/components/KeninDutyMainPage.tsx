@@ -3,6 +3,7 @@ import { Box, Tabs, Tab, useTheme } from '@mui/material';
 import { KeninDutyPage } from './KeninDutyPage';
 import { KeninDutyLogsPage } from './KeninDutyLogsPage';
 import { KeninDutyDashboardPage } from './KeninDutyDashboardPage';
+import { KeninDutyTeamsPage } from './KeninDutyTeamsPage';
 import KeninDutyConfigPage from './KeninDutyConfigPage';
 
 export const KeninDutyMainPage = () => {
@@ -62,6 +63,7 @@ export const KeninDutyMainPage = () => {
         >
           <Tab label="📊 Dashboards" />
           <Tab label="📊 Alertas" />
+          <Tab label="👥 Times" />
           <Tab label="📝 Logs" />
           <Tab label="⚙️ Configurações" />
         </Tabs>
@@ -77,8 +79,9 @@ export const KeninDutyMainPage = () => {
       }}>
         {tabValue === 0 && <KeninDutyDashboardPage />}
         {tabValue === 1 && <KeninDutyPage />}
-        {tabValue === 2 && <KeninDutyLogsPage />}
-        {tabValue === 3 && <KeninDutyConfigPage />}
+        {tabValue === 2 && <KeninDutyTeamsPage />}
+        {tabValue === 3 && <KeninDutyLogsPage />}
+        {tabValue === 4 && <KeninDutyConfigPage />}
       </Box>
     </Box>
   );
