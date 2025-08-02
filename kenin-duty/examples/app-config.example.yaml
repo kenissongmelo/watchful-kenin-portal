@@ -1,0 +1,48 @@
+# KeninDuty Plugin Configuration Example
+# Add this to your app-config.yaml
+
+keninDuty:
+  enabled: true
+  
+  # Provider integrations (all optional)
+  providers:
+    # New Relic Integration
+    newrelic:
+      enabled: true
+      apiKey: ${NEW_RELIC_API_KEY}      # Set this in your environment
+      accountId: ${NEW_RELIC_ACCOUNT_ID} # Set this in your environment
+    
+    # Datadog Integration  
+    datadog:
+      enabled: false  # Set to true to enable
+      apiKey: ${DATADOG_API_KEY}       # Set this in your environment
+      appKey: ${DATADOG_APP_KEY}       # Set this in your environment
+    
+    # Grafana Integration
+    grafana:
+      enabled: false  # Set to true to enable
+      url: ${GRAFANA_URL}              # e.g., https://your-grafana.com
+      apiKey: ${GRAFANA_API_KEY}       # Set this in your environment
+
+  # Webhook forwarding (optional)
+  webhook:
+    endpoint: "http://your-service:8080/webhook/alerts"
+    
+  # Notification settings (optional)
+  notifications:
+    # Twilio SMS integration
+    twilio:
+      accountSid: ${TWILIO_ACCOUNT_SID}
+      authToken: ${TWILIO_AUTH_TOKEN}  
+      fromNumber: ${TWILIO_FROM_NUMBER}
+
+# Environment Variables to set:
+# NEW_RELIC_API_KEY=your-newrelic-api-key
+# NEW_RELIC_ACCOUNT_ID=your-newrelic-account-id
+# DATADOG_API_KEY=your-datadog-api-key
+# DATADOG_APP_KEY=your-datadog-app-key
+# GRAFANA_URL=https://your-grafana.com
+# GRAFANA_API_KEY=your-grafana-api-key
+# TWILIO_ACCOUNT_SID=your-twilio-sid
+# TWILIO_AUTH_TOKEN=your-twilio-token
+# TWILIO_FROM_NUMBER=+1234567890 
