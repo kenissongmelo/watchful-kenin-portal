@@ -1,0 +1,1 @@
+# Screenshots do KeninDuty Plugin
