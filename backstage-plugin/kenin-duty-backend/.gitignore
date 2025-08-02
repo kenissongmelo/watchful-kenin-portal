@@ -1,0 +1,11 @@
+dist
+node_modules
+*.log
+*.tmp
+*.cache
+.DS_Store
+coverage
+.nyc_output
+.eslintcache
+.vscode
+.idea
